@@ -30,9 +30,9 @@ app.add_middleware(
 
 # ✅ ImageKit Configuration
 imagekit = ImageKit(
-    private_key="YOUR_PRIVATE_KEY",
-    public_key="YOUR_PUBLIC_KEY",
-    url_endpoint="YOUR_URL_ENDPOINT"
+    private_key='private_lJZeBuXRen5WI4WpjNRjf1DZW4E=',
+    public_key='public_djwqIa18ksHGZEGTJk59MFOp/mA=',
+    url_endpoint='https://ik.imagekit.io/46k1lkvq2'
 )
 
 INDEX_NAME = "pdf_documents"
