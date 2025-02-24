@@ -4,3 +4,5 @@ elasticsearch
 pymupdf
 python-multipart
 imagekitio
+groq
+
