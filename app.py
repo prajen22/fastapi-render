@@ -6,7 +6,7 @@ import os
 import tempfile
 from elasticsearch.helpers import bulk
 from imagekitio import ImageKit
-from imagekitio.models import UploadFileRequest
+
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
@@ -58,12 +58,14 @@ def upload_to_imagekit(file_path, file_name):
     try:
         with open(file_path, "rb") as file:
             response = imagekit.upload(
-                file=UploadFileRequest(file=file, file_name=file_name)
+                file=file,
+                file_name=file_name
             )
         return response.url if hasattr(response, "url") else None
     except Exception as e:
         print("Error uploading to ImageKit:", e)
         return None
+
 
 def process_and_store(pdf_path):
     """Uploads the PDF to ImageKit, extracts text, and stores data in Elasticsearch."""
