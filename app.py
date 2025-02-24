@@ -16,11 +16,12 @@ app = FastAPI()
 # ✅ CORS Configuration for React Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Allow frontend requests
+    allow_origins=["*"],  # Change this for security (use frontend domain)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 INDEX_NAME = "pdf_documents"
 
