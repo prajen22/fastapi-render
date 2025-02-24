@@ -12,7 +12,7 @@ import requests
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
-API_KEY = "your_elasticsearch_api_key"
+API_KEY = "dHlnVEtaVUJCYWNWcEcwczVQcE46d2tOTURWLXBUSmFvQkg1bmxma1VkQQ=="
 
 es = Elasticsearch(
     ELASTICSEARCH_URL,
