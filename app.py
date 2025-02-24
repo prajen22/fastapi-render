@@ -7,6 +7,7 @@ import tempfile
 from elasticsearch.helpers import bulk
 from imagekitio import ImageKit
 import groq
+from pydantic import BaseModel
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
