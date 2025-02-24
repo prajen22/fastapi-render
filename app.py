@@ -27,10 +27,10 @@ app = FastAPI()
 # ✅ CORS Configuration for React Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this for security (use frontend domain)
+    allow_origins=["*"],  # Change "*" to your frontend URL in production
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 # ✅ ImageKit Configuration
