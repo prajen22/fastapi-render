@@ -194,17 +194,37 @@ def generate_response(knowledge_base, user_query):
 class QueryRequest(BaseModel):
     query: str
 
+@app.get("/llm")
 @app.post("/llm")
-def llm_query(request: QueryRequest):
-    """LLM API that retrieves top search result and generates response using Groq LLM."""
-    search_results = search_pdfs(query=request.query)
+def llm_query(
+    request: QueryRequest = None,  
+    query: str = Query(None, description="User query for LLM")
+):
+    """Retrieve top search result and generate response using LLM."""
+    
+    user_query = query if query else (request.query if request else None)
+    if not user_query:
+        return {"error": "No query provided."}
+
+    # Perform search
+    search_results = search_pdfs(query=user_query)
     
     if "results" in search_results and search_results["results"]:
-        top_result = search_results["results"][0]  # Take the most relevant result
-        response = {"response": f"AI response for: {request.query}"}
-        return response
+        top_result = search_results["results"][0]  # Most relevant result
+        
+        # Call the Groq LLM API (Replace with actual API call)
+        llm_response = requests.post(
+            "https://api.groq.com/llm",  
+            json={"input": top_result["page_content"]},
+            headers={"Authorization": "Bearer YOUR_GROQ_API_KEY"}
+        ).json()
+        
+        return {
+            "results": search_results["results"],  # Return search results
+            "llm_response": llm_response.get("response", "LLM response unavailable.")
+        }
     
-    return {"response": "No relevant information found."}
+    return {"results": [], "llm_response": "No relevant information found."}
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
