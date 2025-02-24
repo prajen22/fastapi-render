@@ -7,7 +7,6 @@ import tempfile
 from elasticsearch.helpers import bulk
 from imagekitio import ImageKit
 
-
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
 API_KEY = "dHlnVEtaVUJCYWNWcEcwczVQcE46d2tOTURWLXBUSmFvQkg1bmxma1VkQQ=="  # Replace with actual API key
@@ -66,12 +65,10 @@ def upload_to_imagekit(file_path, file_name):
         print("Error uploading to ImageKit:", e)
         return None
 
-def process_and_store(pdf_path):
+def process_and_store(pdf_path, pdf_name):
     """Extracts text from PDF and stores in Elasticsearch."""
     try:
         pdf_document = fitz.open(pdf_path)  # Open PDF
-        pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
-
         pdf_cdn_link = upload_to_imagekit(pdf_path, pdf_name + ".pdf")
 
         if not pdf_cdn_link:
@@ -113,7 +110,7 @@ async def upload_pdf(file: UploadFile = File(...)):
             temp_pdf.write(file.file.read())
             temp_pdf_path = temp_pdf.name
 
-        pdf_url = process_and_store(temp_pdf_path)
+        pdf_url = process_and_store(temp_pdf_path, pdf_name)
 
         if pdf_url:
             return {"message": "PDF uploaded successfully", "pdf_url": pdf_url, "pdf_name": pdf_name}
@@ -147,6 +144,15 @@ def search_pdfs(query: str = Query(..., description="Search query")):
     ]
 
     return {"results": results}
+
+@app.delete("/delete")
+def delete_all_pdfs():
+    """Deletes all PDFs from Elasticsearch."""
+    try:
+        es.delete_by_query(index=INDEX_NAME, body={"query": {"match_all": {}}})
+        return {"message": "✅ All PDFs deleted successfully!"}
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
