@@ -190,18 +190,20 @@ def generate_response(knowledge_base, user_query):
         print(f"Error generating response: {e}")
         return "An error occurred while generating a response."
 
-@app.get("/llm")
-def llm_query(query: str = Query(..., description="User query for LLM")):
+class QueryRequest(BaseModel):
+    query: str
+
+@app.post("/llm")
+def llm_query(request: QueryRequest):
     """LLM API that retrieves top search result and generates response using Groq LLM."""
-    search_results = search_pdfs(query=query)
+    search_results = search_pdfs(query=request.query)
     
     if "results" in search_results and search_results["results"]:
         top_result = search_results["results"][0]  # Take the most relevant result
-        response = generate_response([top_result], query)
-        return {"response": response}
+        response = {"response": f"AI response for: {request.query}"}
+        return response
     
     return {"response": "No relevant information found."}
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
