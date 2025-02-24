@@ -38,7 +38,7 @@ imagekit = ImageKit(
 INDEX_NAME = "pdf_documents"
 
 # ✅ Create Elasticsearch Index (if not exists)
-if not es.indices.exists(index=INDEX_NAME):
+if not es.indices.exists(index=INDEX_NAME).body:
     es.indices.create(
         index=INDEX_NAME,
         body={
@@ -66,42 +66,49 @@ def upload_to_imagekit(file_path, file_name):
         print("Error uploading to ImageKit:", e)
         return None
 
-
 def process_and_store(pdf_path):
-    """Uploads the PDF to ImageKit, extracts text, and stores data in Elasticsearch."""
-    pdf_document = fitz.open(pdf_path)
-    pdf_name = os.path.basename(pdf_path)
-    
-    # ✅ Upload full PDF to ImageKit
-    pdf_cdn_link = upload_to_imagekit(pdf_path, pdf_name)
-    if not pdf_cdn_link:
+    """Extracts text from PDF and stores in Elasticsearch."""
+    try:
+        pdf_document = fitz.open(pdf_path)  # Open PDF
+        pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
+
+        pdf_cdn_link = upload_to_imagekit(pdf_path, pdf_name + ".pdf")
+
+        if not pdf_cdn_link:
+            return None
+
+        # ✅ Extract text & store each page separately in Elasticsearch
+        actions = []
+        for page_num in range(len(pdf_document)):
+            page = pdf_document[page_num]
+            page_text = page.get_text("text").strip()
+            page_link = f"{pdf_cdn_link}#page={page_num + 1}"
+
+            # ✅ Prepare bulk insert action
+            actions.append({
+                "_index": INDEX_NAME,
+                "_source": {
+                    "pdf_name": pdf_name,
+                    "page_number": page_num + 1,
+                    "page_content": page_text,
+                    "imagekit_link": page_link
+                }
+            })
+
+        bulk(es, actions)  # ✅ Bulk insert all pages at once
+        return pdf_cdn_link
+
+    except Exception as e:
+        print("Error processing PDF:", e)
         return None
-
-    # ✅ Extract text & store each page separately in Elasticsearch
-    actions = []
-    for page_num in range(len(pdf_document)):
-        page = pdf_document[page_num]
-        page_text = page.get_text("text").strip()
-        page_link = f"{pdf_cdn_link}#page={page_num + 1}"
-
-        # ✅ Prepare bulk insert action
-        actions.append({
-            "_index": INDEX_NAME,
-            "_source": {
-                "pdf_name": pdf_name,
-                "page_number": page_num + 1,
-                "page_content": page_text,
-                "imagekit_link": page_link
-            }
-        })
-
-    bulk(es, actions)  # ✅ Bulk insert all pages at once
-    return pdf_cdn_link
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     """Endpoint to upload a PDF, extract text, and store in Elasticsearch."""
     try:
+        # Extract filename without extension
+        pdf_name = os.path.splitext(file.filename)[0]
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
             temp_pdf.write(file.file.read())
             temp_pdf_path = temp_pdf.name
@@ -109,7 +116,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         pdf_url = process_and_store(temp_pdf_path)
 
         if pdf_url:
-            return {"message": "PDF uploaded successfully", "pdf_url": pdf_url}
+            return {"message": "PDF uploaded successfully", "pdf_url": pdf_url, "pdf_name": pdf_name}
         else:
             return {"error": "Upload failed"}
 
