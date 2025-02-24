@@ -19,7 +19,7 @@ es = Elasticsearch(
 )
 
 # ✅ Groq API Configuration
-GROQ_API_KEY = "your_groq_api_key_here"  # Replace with your actual Groq API key
+GROQ_API_KEY = "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"  # Replace with your actual Groq API key
 
 # ✅ FastAPI App Initialization
 app = FastAPI()
