@@ -1,6 +1,4 @@
-
-
-# ✅ Elasticsearch Configurationfrom fastapi import FastAPI, UploadFile, File, Query
+from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
 import fitz  # PyMuPDF for PDF text extraction
@@ -8,7 +6,7 @@ import os
 import tempfile
 from elasticsearch.helpers import bulk
 from imagekitio import ImageKit
-
+import groq
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
@@ -19,6 +17,10 @@ es = Elasticsearch(
     api_key=API_KEY
 )
 
+# ✅ Groq API Configuration
+GROQ_API_KEY = "your_groq_api_key_here"  # Replace with your actual Groq API key
+
+# ✅ FastAPI App Initialization
 app = FastAPI()
 
 # ✅ CORS Configuration for React Frontend
@@ -150,7 +152,56 @@ def search_pdfs(query: str = Query(..., description="Search query")):
 
     return {"results": results}
 
+def generate_response(knowledge_base, user_query):
+    """Generates response using retrieved knowledge and Groq LLM."""
+    if not knowledge_base:
+        return "No relevant information found. Please refine your query."
+
+    # ✅ Format top search results
+    context = "\n".join([
+        f"📄 Page: {kb['page_number']} | 🖼 Image: {kb['imagekit_link']}\n🔹 {kb['page_content'][:300]}..."
+        for kb in knowledge_base[:3]
+    ])
+
+    # ✅ Prompt for LLM
+    prompt = f"""
+    You are an AI assistant specializing in technical knowledge retrieval.
+    Answer the user's query based on the provided database.
+
+    Knowledge Base:
+    {context}
+
+    User Query: {user_query}
+
+    Provide a concise, accurate response using the knowledge base and mention the relevant page numbers.
+    """
+
+    client = groq.Client(api_key=GROQ_API_KEY)
+
+    try:
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "system", "content": "Answer using the given knowledge base."},
+                      {"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content if response.choices else "No response generated."
+
+    except Exception as e:
+        print(f"Error generating response: {e}")
+        return "An error occurred while generating a response."
+
+@app.get("/llm")
+def llm_query(query: str = Query(..., description="User query for LLM")):
+    """LLM API that retrieves top search result and generates response using Groq LLM."""
+    search_results = search_pdfs(query=query)
+    
+    if "results" in search_results and search_results["results"]:
+        top_result = search_results["results"][0]  # Take the most relevant result
+        response = generate_response([top_result], query)
+        return {"response": response}
+    
+    return {"response": "No relevant information found."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
