@@ -12,7 +12,7 @@ import requests
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
-API_KEY = "dHlnVEtaVUJCYWNWcEcwczVQcE46d2tOTURWLXBUSmFvQkg1bmxma1VkQQ=="  # Replace with actual API key
+API_KEY = "your_elasticsearch_api_key"
 
 es = Elasticsearch(
     ELASTICSEARCH_URL,
@@ -20,15 +20,15 @@ es = Elasticsearch(
 )
 
 # ✅ Groq API Configuration
-GROQ_API_KEY = "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"  # Replace with your actual Groq API key
+GROQ_API_KEY = "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"
 
 # ✅ FastAPI App Initialization
 app = FastAPI()
 
-# ✅ CORS Configuration for React Frontend
+# ✅ CORS Configuration (Allow only frontend domain in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change "*" to your frontend URL in production
+    allow_origins=["*"],  # Change "*" to frontend domain in production
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allows all headers
@@ -36,15 +36,15 @@ app.add_middleware(
 
 # ✅ ImageKit Configuration
 imagekit = ImageKit(
-    private_key='private_lJZeBuXRen5WI4WpjNRjf1DZW4E=',
-    public_key='public_djwqIa18ksHGZEGTJk59MFOp/mA=',
-    url_endpoint='https://ik.imagekit.io/46k1lkvq2'
+    private_key='your_private_key',
+    public_key='your_public_key',
+    url_endpoint='https://ik.imagekit.io/your_endpoint'
 )
 
 INDEX_NAME = "pdf_documents"
 
 # ✅ Create Elasticsearch Index (if not exists)
-if not es.indices.exists(index=INDEX_NAME).body:
+if not es.indices.exists(index=INDEX_NAME):
     es.indices.create(
         index=INDEX_NAME,
         body={
@@ -67,7 +67,7 @@ def upload_to_imagekit(file_path, file_name):
                 file=file,
                 file_name=file_name
             )
-        return response.url if hasattr(response, "url") else None
+        return response.get("url")  # Corrected response handling
     except Exception as e:
         print("Error uploading to ImageKit:", e)
         return None
@@ -75,11 +75,10 @@ def upload_to_imagekit(file_path, file_name):
 def process_and_store(pdf_path):
     """Extracts text from PDF and stores in Elasticsearch."""
     try:
-        pdf_document = fitz.open(pdf_path)  # Open PDF
+        pdf_document = fitz.open(pdf_path)
         pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
 
         pdf_cdn_link = upload_to_imagekit(pdf_path, pdf_name + ".pdf")
-
         if not pdf_cdn_link:
             return None
 
@@ -90,7 +89,6 @@ def process_and_store(pdf_path):
             page_text = page.get_text("text").strip()
             page_link = f"{pdf_cdn_link}#page={page_num + 1}"
 
-            # ✅ Prepare bulk insert action
             actions.append({
                 "_index": INDEX_NAME,
                 "_source": {
@@ -112,7 +110,6 @@ def process_and_store(pdf_path):
 async def upload_pdf(file: UploadFile = File(...)):
     """Endpoint to upload a PDF, extract text, and store in Elasticsearch."""
     try:
-        # Extract filename without extension
         pdf_name = os.path.splitext(file.filename)[0]
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
@@ -139,33 +136,31 @@ def search_pdfs(query: str = Query(..., description="Search query")):
             }
         }
     }
-
-    response = es.search(index=INDEX_NAME, body=search_body)
-
-    results = [
-        {
-            "pdf_name": hit["_source"]["pdf_name"],
-            "page_number": hit["_source"]["page_number"],
-            "page_content": hit["_source"]["page_content"],
-            "imagekit_link": hit["_source"]["imagekit_link"],
-        }
-        for hit in response["hits"]["hits"]
-    ]
-
-    return {"results": results}
+    try:
+        response = es.search(index=INDEX_NAME, body=search_body)
+        results = [
+            {
+                "pdf_name": hit["_source"]["pdf_name"],
+                "page_number": hit["_source"]["page_number"],
+                "page_content": hit["_source"]["page_content"],
+                "imagekit_link": hit["_source"]["imagekit_link"],
+            }
+            for hit in response["hits"]["hits"]
+        ]
+        return {"results": results}
+    except Exception as e:
+        return {"error": str(e)}
 
 def generate_response(knowledge_base, user_query):
     """Generates response using retrieved knowledge and Groq LLM."""
     if not knowledge_base:
         return "No relevant information found. Please refine your query."
 
-    # ✅ Format top search results
     context = "\n".join([
         f"📄 Page: {kb['page_number']} | 🖼 Image: {kb['imagekit_link']}\n🔹 {kb['page_content'][:300]}..."
         for kb in knowledge_base[:3]
     ])
 
-    # ✅ Prompt for LLM
     prompt = f"""
     You are an AI assistant specializing in technical knowledge retrieval.
     Answer the user's query based on the provided database.
@@ -195,37 +190,19 @@ def generate_response(knowledge_base, user_query):
 class QueryRequest(BaseModel):
     query: str
 
-@app.get("/llm")
 @app.post("/llm")
-def llm_query(
-    request: QueryRequest = None,  
-    query: str = Query(None, description="User query for LLM")
-):
+def llm_query(request: QueryRequest):
     """Retrieve top search result and generate response using LLM."""
     
-    user_query = query if query else (request.query if request else None)
-    if not user_query:
-        return {"error": "No query provided."}
-
-    # Perform search
+    user_query = request.query
     search_results = search_pdfs(query=user_query)
     
     if "results" in search_results and search_results["results"]:
-        top_result = search_results["results"][0]  # Most relevant result
-        
-        # Call the Groq LLM API (Replace with actual API call)
-        llm_response = requests.post(
-            "https://api.groq.com/llm",  
-            json={"input": top_result["page_content"]},
-            headers={"Authorization": "Bearer YOUR_GROQ_API_KEY"}
-        ).json()
-        
-        return {
-            "results": search_results["results"],  # Return search results
-            "llm_response": llm_response.get("response", "LLM response unavailable.")
-        }
-    
+        llm_response = generate_response(search_results["results"], user_query)
+        return {"results": search_results["results"], "llm_response": llm_response}
+
     return {"results": [], "llm_response": "No relevant information found."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
