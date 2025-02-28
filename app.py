@@ -28,7 +28,7 @@ app = FastAPI()
 # ✅ CORS Configuration (Allow only frontend domain in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change "*" to frontend domain in production
+    allow_origins=["*"],  # Change "" to frontend domain in production
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allows all headers
@@ -190,8 +190,128 @@ def generate_response(knowledge_base, user_query):
 class QueryRequest(BaseModel):
     query: str
 
+# @app.get("/list_pdfs")
+# def list_pdfs():
+#     """Retrieve all PDFs stored in Elasticsearch."""
+#     try:
+#         search_body = {
+#             "size": 1000,
+#             "query": {
+#                 "match_all": {}
+#             }
+#         }
+#         response = es.search(index=INDEX_NAME, body=search_body)
+
+#         pdf_data = {}
+#         for hit in response["hits"]["hits"]:
+#             pdf_name = hit["_source"]["pdf_name"]
+#             if pdf_name not in pdf_data:
+#                 pdf_data[pdf_name] = {
+#                     "pdf_name": pdf_name,
+#                     "num_pages": 0,
+#                     "imagekit_link": hit["_source"]["imagekit_link"]
+#                 }
+#             pdf_data[pdf_name]["num_pages"] += 1
+
+#         return {"results": list(pdf_data.values())}
+
+#     except Exception as e:
+#         return {"error": str(e)}
+
+# @app.delete("/delete_pdf/{pdf_name}")
+# def delete_pdf(pdf_name: str):
+#     """Delete all pages of a PDF from Elasticsearch."""
+#     try:
+#         delete_body = {
+#             "query": {
+#                 "match": {
+#                     "pdf_name": pdf_name
+#                 }
+#             }
+#         }
+#         response = es.delete_by_query(index=INDEX_NAME, body=delete_body)
+        
+#         if response["deleted"] > 0:
+#             return {"message": f"Deleted PDF: {pdf_name}"}
+#         return {"error": "PDF not found"}
+
+#     except Exception as e:
+#         return {"error": str(e)}
+
+@app.get("/stats")
+async def get_pdf_stats():
+    """Fetch total number of PDFs and total pages stored."""
+    try:
+        response = es.search(index=INDEX_NAME, body={
+            "size": 0,  # Don't return documents, just aggregations
+            "aggs": {
+                "unique_pdfs": {
+                    "cardinality": {
+                        "field": "imagekit_link.keyword"
+                    }
+                },
+                "total_pages": {
+                    "value_count": {
+                        "field": "page_number"
+                    }
+                }
+            }
+        })
+
+        return {
+            "total_pdfs": response["aggregations"]["unique_pdfs"]["value"],
+            "total_pages": response["aggregations"]["total_pages"]["value"]
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+  
+
+
+@app.get("/list_pdfs")
+async def list_pdfs():
+    """Retrieve all PDFs with links to page 1."""
+    try:
+        response = es.search(index=INDEX_NAME, body={
+            "size": 1000,
+            "query": {
+                "match": {"page_number": 1}  # Only fetch page 1 entries
+            }
+        })
+
+        results = [
+            {
+                "pdf_name": hit["_source"]["pdf_name"],
+                "page_link": hit["_source"]["imagekit_link"]
+            }
+            for hit in response["hits"]["hits"]
+        ]
+
+        return {"documents": results}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.delete("/delete_pdf")
+async def delete_pdf(pdf_name: str):
+    """Delete a PDF and all its pages from Elasticsearch."""
+    try:
+        response = es.delete_by_query(index=INDEX_NAME, body={
+            "query": {
+                "match": {"pdf_name": pdf_name}
+            }
+        })
+
+        return {"message": f"Deleted {response['deleted']} pages from {pdf_name}"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.post("/llm")
-def llm_query(request: QueryRequest):
+async def llm_query(request: QueryRequest):
     """Retrieve top search result and generate response using LLM."""
     
     user_query = request.query
@@ -203,6 +323,6 @@ def llm_query(request: QueryRequest):
 
     return {"results": [], "llm_response": "No relevant information found."}
 
-if __name__ == "__main__":
+if _name_ == "main":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
