@@ -11,13 +11,16 @@ from pydantic import BaseModel
 import requests
 
 # ✅ Elasticsearch Configuration
-ELASTICSEARCH_URL = "https://e4d509b4d8fb49a78a19a571c1b65bba.us-central1.gcp.cloud.es.io:443"
-API_KEY = "dHlnVEtaVUJCYWNWcEcwczVQcE46d2tOTURWLXBUSmFvQkg1bmxma1VkQQ=="
+ELASTICSEARCH_URL = "https://my-elasticsearch-project-d4e765.es.us-east-1.aws.elastic.cloud:443"
+API_KEY = "YVMzaGJwVUJsbWVLelFDNXhOTDM6bjZFVXRiRk1Eb0NJSGZiZkVabWRWUQ=="
+
+# YVMzaGJwVUJsbWVLelFDNXhOTDM6bjZFVXRiRk1Eb0NJSGZiZkVabWRWUQ==
+# https://my-elasticsearch-project-d4e765.es.us-east-1.aws.elastic.cloud:443
 
 es = Elasticsearch(
     ELASTICSEARCH_URL,
     api_key=API_KEY
-)
+)s
 
 # ✅ Groq API Configuration
 GROQ_API_KEY = "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"
