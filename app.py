@@ -20,8 +20,7 @@ API_KEY = "YVMzaGJwVUJsbWVLelFDNXhOTDM6bjZFVXRiRk1Eb0NJSGZiZkVabWRWUQ=="
 es = Elasticsearch(
     ELASTICSEARCH_URL,
     api_key=API_KEY
-)s
-
+)
 # ✅ Groq API Configuration
 GROQ_API_KEY = "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"
 
