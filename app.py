@@ -61,17 +61,35 @@ if not es.indices.exists(index=INDEX_NAME):
         }
     )
 
+# def upload_to_imagekit(file_path, file_name):
+#     """Uploads a file to ImageKit.io and returns the file URL."""
+#     try:
+#         with open(file_path, "rb") as file:
+#             response = imagekit.upload(
+#                 file=file,
+#                 file_name=file_name
+#             )
+#         return response.get("url")  # Corrected response handling
+#     except Exception as e:
+#         print("Error uploading to ImageKit:", e)
+#         return None
+
+
 def upload_to_imagekit(file_path, file_name):
-    """Uploads a file to ImageKit.io and returns the file URL."""
     try:
         with open(file_path, "rb") as file:
             response = imagekit.upload(
                 file=file,
                 file_name=file_name
             )
-        return response.get("url")  # Corrected response handling
+
+        print("Upload Response Type:", type(response))  # Debugging
+        print("Upload Response Data:", response._dict_)  # Print all properties
+        
+        return response.url  # Correctly access the URL
+
     except Exception as e:
-        print("Error uploading to ImageKit:", e)
+        print("Error uploading to ImageKit:", str(e))
         return None
 
 def process_and_store(pdf_path):
@@ -108,25 +126,47 @@ def process_and_store(pdf_path):
         print("Error processing PDF:", e)
         return None
 
+# @app.post("/upload")
+# async def upload_pdf(file: UploadFile = File(...)):
+#     """Endpoint to upload a PDF, extract text, and store in Elasticsearch."""
+#     try:
+#         pdf_name = os.path.splitext(file.filename)[0]
+
+#         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+#             temp_pdf.write(file.file.read())
+#             temp_pdf_path = temp_pdf.name
+
+#         pdf_url = process_and_store(temp_pdf_path)
+
+#         if pdf_url:
+#             return {"message": "PDF uploaded successfully", "pdf_url": pdf_url, "pdf_name": pdf_name}
+#         else:
+#             return {"error": "Upload failed"}
+
+#     except Exception as e:
+#         return {"error": str(e)}
+
+
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    """Endpoint to upload a PDF, extract text, and store in Elasticsearch."""
+    """Handles PDF upload, processes text, stores in Elasticsearch, and uploads to ImageKit."""
     try:
-        pdf_name = os.path.splitext(file.filename)[0]
+        # ✅ Save temporarily
+        temp_dir = tempfile.mkdtemp()
+        temp_file_path = os.path.join(temp_dir, file.filename)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
-            temp_pdf.write(file.file.read())
-            temp_pdf_path = temp_pdf.name
+        with open(temp_file_path, "wb") as buffer:
+            buffer.write(await file.read())
 
-        pdf_url = process_and_store(temp_pdf_path)
+        # ✅ Process & Upload
+        pdf_cdn_link = process_and_store(temp_file_path)
+        if not pdf_cdn_link:
+            return {"success": False, "message": "Failed to upload to ImageKit"}
 
-        if pdf_url:
-            return {"message": "PDF uploaded successfully", "pdf_url": pdf_url, "pdf_name": pdf_name}
-        else:
-            return {"error": "Upload failed"}
+        return {"success": True, "message": "File uploaded successfully", "cdn_link": pdf_cdn_link}
 
     except Exception as e:
-        return {"error": str(e)}
+        return {"success": False, "message": f"Error: {str(e)}"}
 
 @app.get("/search")
 def search_pdfs(query: str = Query(..., description="Search query")):
