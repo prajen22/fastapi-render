@@ -11,8 +11,11 @@ from pydantic import BaseModel
 import requests
 
 # ✅ Elasticsearch Configuration
-ELASTICSEARCH_URL = "https://my-elasticsearch-project-d4e765.es.us-east-1.aws.elastic.cloud:443"
-API_KEY = "YVMzaGJwVUJsbWVLelFDNXhOTDM6bjZFVXRiRk1Eb0NJSGZiZkVabWRWUQ=="
+ELASTICSEARCH_URL = "https://0a56ba4d59e5434ba03a49f61f6adca1.us-central1.gcp.cloud.es.io:443"
+
+
+
+API_KEY = "SmJ6T3JaWUJyTWFhb1duQTNWSGs6VzVsbjEtdjVxTzlyWUhOSGo3N1ZLUQ=="
 
 # YVMzaGJwVUJsbWVLelFDNXhOTDM6bjZFVXRiRk1Eb0NJSGZiZkVabWRWUQ==
 # https://my-elasticsearch-project-d4e765.es.us-east-1.aws.elastic.cloud:443
@@ -22,7 +25,7 @@ es = Elasticsearch(
     api_key=API_KEY
 )
 # ✅ Groq API Configuration
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 # ✅ FastAPI App Initialization
 app = FastAPI()
