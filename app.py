@@ -132,6 +132,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 @app.get("/search")
 def search_pdfs(query: str = Query(..., description="Search query")):
     """Search PDFs stored in Elasticsearch based on a query."""
+    print(f"Searching for query: {query}")  # Add logging for debugging
     search_body = {
         "query": {
             "match": {
@@ -152,7 +153,9 @@ def search_pdfs(query: str = Query(..., description="Search query")):
         ]
         return {"results": results}
     except Exception as e:
+        print(f"Error during search: {e}")  # Log any errors during the search process
         return {"error": str(e)}
+
 
 def generate_response(knowledge_base, user_query):
     """Generates response using retrieved knowledge and Groq LLM."""
@@ -235,15 +238,17 @@ async def delete_pdf(pdf_name: str):
 @app.post("/llm")
 async def llm_query(request: QueryRequest):
     """Retrieve top search result and generate response using LLM."""
-    
     user_query = request.query
-    search_results = search_pdfs(query=user_query)
+    print(f"User query: {user_query}")  # Debugging user query
     
+    search_results = search_pdfs(query=user_query)
     if "results" in search_results and search_results["results"]:
+        print(f"Found results: {search_results['results']}")  # Debugging search results
         llm_response = generate_response(search_results["results"], user_query)
         return {"results": search_results["results"], "llm_response": llm_response}
 
     return {"results": [], "llm_response": "No relevant information found."}
+
 
 if __name__ == "__main__":
     import uvicorn
