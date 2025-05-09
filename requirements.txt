@@ -7,3 +7,4 @@ imagekitio
 groq
 pydantic
 requests
+cassandra-driver
