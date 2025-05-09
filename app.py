@@ -9,6 +9,17 @@ from imagekitio import ImageKit
 import groq
 from pydantic import BaseModel
 import requests
+from fastapi import FastAPI
+from pydantic import BaseModel
+from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
+from fastapi.middleware.cors import CORSMiddleware
+import os
+
+# Replace with hardcoded values if the module is unavailable
+astra_client_id = "sNmpeUqPgFtgxXQnmjczDsaI"  # Replace with your actual client ID
+astra_client_secret = "+PlIZTTxCJA8DWfd39I7Y1vNsDMxTbRkWKkSvIrtA-H8U9rmldAnflhc,Ok6poD,E3Oy72yD6.UfZwxbr4QOmQMqli4jqbsjiL6JZIE31kztIYTbnhZjyCgPwoZdUfnN"  # Replace with your actual client secret
+astra_database_id = "tecgium"  # Replace with your actual database ID
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://0a56ba4d59e5434ba03a49f61f6adca1.us-central1.gcp.cloud.es.io:443"
@@ -63,6 +74,26 @@ if not es.indices.exists(index=INDEX_NAME):
             }
         }
     )
+
+
+def connect_to_cassandra():
+    cloud_config = {
+        'secure_connect_bundle': 'secure-connect-tecgium.zip'  # Path to your secure connect bundle
+    }
+    cluster = Cluster(cloud=cloud_config, auth_provider=PlainTextAuthProvider(astra_client_id, astra_client_secret))
+    session = cluster.connect()
+    session.set_keyspace("tech")
+    return session
+
+# Cassandra session
+session = connect_to_cassandra()
+
+# --- Pydantic model ---
+class LLMResponse(BaseModel):
+    llm_response: str
+
+# To store all responses
+all_responses = []
 
 # def upload_to_imagekit(file_path, file_name):
 #     """Uploads a file to ImageKit.io and returns the file URL."""
@@ -367,6 +398,23 @@ async def llm_query(request: QueryRequest):
         return {"results": search_results["results"], "llm_response": llm_response}
 
     return {"results": [], "llm_response": "No relevant information found."}
+
+
+@app.post("/receive_llm_response")
+async def receive_llm_response(data: LLMResponse):
+    response_text = data.llm_response
+    all_responses.append(response_text)  # Store the response in the list
+
+    # Insert into Astra DB
+    query = "INSERT INTO llm_responses (id, response) VALUES (uuid(), %s)"
+    session.execute(query, [response_text])
+
+    return {"message": "LLM response received and inserted into Astra DB"}
+
+# --- API route to get all responses ---
+@app.get("/all_llm_responses")
+async def get_all_responses():
+    return {"responses": all_responses}  # Return all responses stored in the list
 
 if __name__ == "main":
     import uvicorn
