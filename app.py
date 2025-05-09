@@ -368,6 +368,6 @@ async def llm_query(request: QueryRequest):
 
     return {"results": [], "llm_response": "No relevant information found."}
 
-if _name_ == "main":
+if __name__ == "main":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
