@@ -87,7 +87,7 @@ def upload_to_imagekit(file_path, file_name):
             )
 
         print("Upload Response Type:", type(response))  # Debugging
-        print("Upload Response Data:", response.dict)  # Print all properties
+        print("Upload Response Data:", response._dict_)  # Print all properties
         
         return response.url  # Correctly access the URL
 
