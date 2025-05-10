@@ -15,6 +15,9 @@ from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from datetime import datetime
+from uuid import uuid4
+from typing import List
 
 # Replace with hardcoded values if the module is unavailable
 astra_client_id = "sNmpeUqPgFtgxXQnmjczDsaI"  # Replace with your actual client ID
@@ -415,6 +418,129 @@ async def receive_llm_response(data: LLMResponse):
 @app.get("/all_llm_responses")
 async def get_all_responses():
     return {"responses": all_responses}  # Return all responses stored in the list
+
+
+
+
+
+current_user = None
+current_login_time = None
+
+# === MODELS ===
+class LoginData(BaseModel):
+    login_id: str
+    password: str
+
+class LLMResponse(BaseModel):
+    llm_response: str
+    query: str
+
+
+# === USER LOGIN ===
+@app.post("/user_login")
+async def user_login(data: LoginData):
+    global current_user, current_login_time
+    try:
+        check_user = session.execute(
+            "SELECT password FROM user_details WHERE username=%s",
+            (data.login_id,)
+        ).one()
+
+        if check_user and check_user.password == data.password:
+            current_user = data.login_id
+            current_login_time = datetime.utcnow()
+
+            return {
+                "success": True
+            }
+
+        return {"success": False, "error": "Invalid credentials"}
+
+    except Exception as e:
+        print("Login error:", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+
+@app.post("/receive_llm_response")
+async def receive_llm_response(data: LLMResponse):
+    global current_user
+
+    if not current_user:
+        raise HTTPException(status_code=403, detail="User not logged in")
+
+    try:
+        # Store the response in the all_responses list
+        all_responses.append(data.llm_response)
+
+        # Generate UUID for dummy_id
+        dummy_id = uuid4()
+
+        # Correct query with matching number of placeholders and values
+        query = f"""
+        INSERT INTO {current_user}_log (dummy_id, llm_response, queries)
+        VALUES (%s, %s, %s)
+        """
+
+        # Execute the query with all required values
+        session.execute(query, (dummy_id, data.llm_response, data.query))
+
+        return {"message": "LLM response and query recorded."}
+
+    except Exception as e:
+        print("LLM log error:", e)
+        raise HTTPException(status_code=500, detail="Failed to insert LLM response")
+
+
+
+
+class LLMesponse(BaseModel):
+    llm_response: str  # Only llm_response field
+
+
+@app.post("/get_user_bookmarks", response_model=List[LLMesponse])
+def get_user_bookmarks():
+    global current_user
+
+    # Check if the user is logged in
+    if not current_user:
+        raise HTTPException(status_code=403, detail="User not logged in")
+    
+    # Execute query to fetch llm_response data
+    try:
+        rows = session.execute(f"SELECT llm_response FROM {current_user}_log;")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Prepare the result
+    result = [{"llm_response": row.llm_response} for row in rows]
+
+    # Return the result
+    return result
+
+class querysponse(BaseModel):
+    queries: str
+
+@app.post("/get_user_queries", response_model=List[querysponse])
+def get_user_queries():
+    global current_user
+
+    # Check if the user is logged in
+    if not current_user:
+        raise HTTPException(status_code=403, detail="User not logged in")
+    
+    # Execute query to fetch only queries (without llm_response)
+    try:
+        rows = session.execute(f"SELECT queries FROM {current_user}_log;")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Prepare the result
+    result = [{"queries": row.queries} for row in rows]
+
+    # Return the result
+    return result
+
 
 if __name__ == "main":
     import uvicorn
