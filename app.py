@@ -551,6 +551,7 @@ async def submit_contact(data: ContactUsData):
         ))
         return {"message": "Contact form submitted successfully"}
     except Exception as e:
+        print("🔥 Contact submission error:", str(e))  # ADD THIS LINE
         raise HTTPException(status_code=500, detail=str(e))
 
 
