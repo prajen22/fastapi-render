@@ -466,7 +466,7 @@ async def user_login(data: LoginData):
 
 @app.post("/receive_llm_response")
 async def receive_llm_response(data: LLMResponse):
-    global current_user
+    current_user = "raj"
 
     if not current_user:
         raise HTTPException(status_code=403, detail="User not logged in")
