@@ -21,7 +21,7 @@ from typing import List
 from fastapi import HTTPException
 from cassandra.query import SimpleStatement
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.query import SimpleStatement
