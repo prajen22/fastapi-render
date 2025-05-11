@@ -464,34 +464,21 @@ async def user_login(data: LoginData):
 
 
 
+class LLMData(BaseModel):
+    query: str
+    llm_response: str
+
 @app.post("/receive_llm_response")
-async def receive_llm_response(data: LLMResponse):
-    current_user = "raj"
-
-    if not current_user:
-        raise HTTPException(status_code=403, detail="User not logged in")
-
+async def receive_llm_response(data: LLMData):
     try:
-        # Store the response in the all_responses list
-        all_responses.append(data.llm_response)
-
-        # Generate UUID for dummy_id
-        dummy_id = uuid4()
-
-        # Correct query with matching number of placeholders and values
-        query = f"""
-        INSERT INTO {current_user}_log (dummy_id, llm_response, queries)
-        VALUES (%s, %s, %s)
-        """
-
-        # Execute the query with all required values
-        session.execute(query, (dummy_id, data.llm_response, data.query))
-
-        return {"message": "LLM response and query recorded."}
-
+        insert_query = SimpleStatement("""
+            INSERT INTO raj_log (dummy_id, llm_response, queries)
+            VALUES (%s, %s, %s)
+        """)
+        session.execute(insert_query, (uuid.uuid4(), data.llm_response, data.query))
+        return {"message": "Data inserted successfully"}
     except Exception as e:
-        print("LLM log error:", e)
-        raise HTTPException(status_code=500, detail="Failed to insert LLM response")
+        return {"error": str(e)}
 
 
 
