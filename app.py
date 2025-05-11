@@ -461,31 +461,37 @@ async def user_login(data: LoginData):
 
 
 
-class LLMData(BaseModel):
-    query: str
+class LLMResponse(BaseModel):
     llm_response: str
+    query: str
 
+# Endpoint to receive LLM response and store in Cassandra
 @app.post("/receive_llm_response")
 async def receive_llm_response(data: LLMResponse):
     global current_user
 
+    # Ensure user is logged in (current_user should not be None or empty)
     if not current_user:
         raise HTTPException(status_code=403, detail="User not logged in")
 
     try:
-        # Store the response in the all_responses list
+        # Store the response in the all_responses list for temporary storage
         all_responses.append(data.llm_response)
 
         # Generate UUID for dummy_id
         dummy_id = uuid4()
 
-        # Correct query with matching number of placeholders and values
+        # Ensure current_user's table exists (check for existence)
+        # Replace the table name dynamically with current_user's table
+        table_name = f"{current_user}_log"
+
+        # Ensure the query structure matches the table schema
         query = f"""
-        INSERT INTO {current_user}_log (dummy_id, llm_response, queries)
+        INSERT INTO {table_name} (dummy_id, llm_response, queries)
         VALUES (%s, %s, %s)
         """
-
-        # Execute the query with all required values
+        
+        # Execute the query with the required values
         session.execute(query, (dummy_id, data.llm_response, data.query))
 
         return {"message": "LLM response and query recorded."}
@@ -493,7 +499,6 @@ async def receive_llm_response(data: LLMResponse):
     except Exception as e:
         print("LLM log error:", e)
         raise HTTPException(status_code=500, detail="Failed to insert LLM response")
-
 
 
 
