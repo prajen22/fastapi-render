@@ -18,6 +18,8 @@ import os
 from datetime import datetime
 from uuid import uuid4
 from typing import List
+from fastapi import HTTPException
+
 
 # Replace with hardcoded values if the module is unavailable
 astra_client_id = "sNmpeUqPgFtgxXQnmjczDsaI"  # Replace with your actual client ID
