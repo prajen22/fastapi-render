@@ -529,6 +529,30 @@ def get_user_queries():
 
     # Return the result
     return result
+class ContactUsData(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    message: str
+
+@app.post("/submit_contact")
+async def submit_contact(data: ContactUsData):
+    try:
+        insert_query = SimpleStatement("""
+            INSERT INTO contact_us (id, first_name, last_name, email, message)
+            VALUES (%s, %s, %s, %s, %s)
+        """)
+        session.execute(insert_query, (
+            uuid.uuid4(),
+            data.first_name,
+            data.last_name,
+            data.email,
+            data.message
+        ))
+        return {"message": "Contact form submitted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 if __name__ == "main":
