@@ -575,33 +575,30 @@ async def submit_contact(data: ContactUsData):
         raise HTTPException(status_code=500, detail=str(e))
 
 class ContactUsResponse(BaseModel):
+    id: str
     first_name: str
     last_name: str
     email: str
     message: str
-    submitted_at: str = None
 
 @app.get("/get_contact_messages", response_model=List[ContactUsResponse])
 async def get_contact_messages():
     try:
-        # Replace this block with real DB logic if needed
-        messages = [
-            {
-                "first_name": "koushik",
-                "last_name": "n",
-                "email": "koushikn.eee2022@citchennai.net",
-                "message": "hi hello",
-                "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            },
-            {
-                "first_name": "Prajen",
-                "last_name": "SK",
-                "email": "prajenk.eee2022@citchennai.net",
-                "message": "hello",
-                "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
-        ]
+        query = "SELECT id, first_name, last_name, email, message FROM contact_us"
+        rows = session.execute(query)
+
+        messages = []
+        for row in rows:
+            messages.append({
+                "id": str(row.id),
+                "first_name": row.first_name,
+                "last_name": row.last_name,
+                "email": row.email,
+                "message": row.message
+            })
+
         return messages
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching contact messages: {str(e)}")
 
