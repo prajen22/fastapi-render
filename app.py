@@ -416,21 +416,7 @@ async def llm_query(request: QueryRequest):
     return {"results": [], "llm_response": "No relevant information found."}
 
 
-@app.post("/receive_llm_response")
-async def receive_llm_response(data: LLMResponse):
-    response_text = data.llm_response
-    all_responses.append(response_text)  # Store the response in the list
 
-    # Insert into Astra DB
-    query = "INSERT INTO llm_responses (id, response) VALUES (uuid(), %s)"
-    session.execute(query, [response_text])
-
-    return {"message": "LLM response received and inserted into Astra DB"}
-
-# --- API route to get all responses ---
-@app.get("/all_llm_responses")
-async def get_all_responses():
-    return {"responses": all_responses}  # Return all responses stored in the list
 
 
 
@@ -480,16 +466,34 @@ class LLMData(BaseModel):
     llm_response: str
 
 @app.post("/receive_llm_response")
-async def receive_llm_response(data: LLMData):
+async def receive_llm_response(data: LLMResponse):
+    global current_user
+
+    if not current_user:
+        raise HTTPException(status_code=403, detail="User not logged in")
+
     try:
-        insert_query = SimpleStatement("""
-            INSERT INTO raj_log (dummy_id, llm_response, queries)
-            VALUES (%s, %s, %s)
-        """)
-        session.execute(insert_query, (uuid.uuid4(), data.llm_response, data.query))
-        return {"message": "Data inserted successfully"}
+        # Store the response in the all_responses list
+        all_responses.append(data.llm_response)
+
+        # Generate UUID for dummy_id
+        dummy_id = uuid4()
+
+        # Correct query with matching number of placeholders and values
+        query = f"""
+        INSERT INTO {current_user}_log (dummy_id, llm_response, queries)
+        VALUES (%s, %s, %s)
+        """
+
+        # Execute the query with all required values
+        session.execute(query, (dummy_id, data.llm_response, data.query))
+
+        return {"message": "LLM response and query recorded."}
+
     except Exception as e:
-        return {"error": str(e)}
+        print("LLM log error:", e)
+        raise HTTPException(status_code=500, detail="Failed to insert LLM response")
+
 
 
 
