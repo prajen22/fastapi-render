@@ -605,6 +605,29 @@ async def get_contact_messages():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching contact messages: {str(e)}")
 
+@app.get("/get_ticket_count")
+async def get_ticket_count():
+    try:
+        # Query to count the rows in the contact_us table
+        count_query = "SELECT COUNT(*) FROM contact_us"
+        result = session.execute(count_query)
+        count = result.one()[0]  # Extract the count from the result
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
+    
+
+@app.get("/get_user_count")
+async def get_user_count():
+    try:
+        # Query to count the rows in the contact_us table
+        count_query = "SELECT COUNT(*) FROM user_details"
+        result = session.execute(count_query)
+        count = result.one()[0]  # Extract the count from the result
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
+
 
 if __name__ == "main":
     import uvicorn
