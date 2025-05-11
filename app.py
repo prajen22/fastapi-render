@@ -19,6 +19,8 @@ from datetime import datetime
 from uuid import uuid4
 from typing import List
 from fastapi import HTTPException
+from cassandra.query import SimpleStatement
+
 
 
 # Replace with hardcoded values if the module is unavailable
