@@ -635,28 +635,15 @@ class QueryText(BaseModel):
 
 @app.post("/delete_bookmark_by_text")
 async def delete_bookmark_by_text(payload: QueryText, request: Request):
-    global current_user
-
-    # 1. Check if the user is logged in
-    if not current_user:
-        raise HTTPException(status_code=403, detail="User not logged in")
-
     try:
-        # 2. Log the input for debug
-        body = await request.json()
-        print("Received body:", body)
-
+        print("Received body:", await request.json())  # Log to verify input
         query_text = payload.query_text
-        print("Query text:", query_text)
+        print("Query text:", query_text)  # Log to verify input
 
-        # 3. Sanitize table name
-        table_name = f"{current_user}_log"
-        if not table_name.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid table name")
+          # Replace with your keyspace
 
-
-        # 5. Execute delete safely
-        session.execute(f"DELETE FROM {table_name} WHERE llm_response = %s", (query_text,))
+        # Delete
+        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query_text])
 
         return JSONResponse(
             content={"message": f"Bookmark with query '{query_text}' deleted successfully"},
@@ -665,9 +652,7 @@ async def delete_bookmark_by_text(payload: QueryText, request: Request):
                 "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
             }
         )
-
     except Exception as e:
-        print("Error:", str(e))
         return JSONResponse(
             content={"message": f"Failed to delete bookmark: {str(e)}"},
             headers={
@@ -675,7 +660,6 @@ async def delete_bookmark_by_text(payload: QueryText, request: Request):
                 "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
             }
         )
-
 if __name__ == "main":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
