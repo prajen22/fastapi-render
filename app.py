@@ -633,19 +633,34 @@ class QueryText(BaseModel):
 
 @app.post("/delete_bookmark_by_text")
 def delete_bookmark_by_text(payload: QueryText):
-    # Connect to Cassandra
-    session = Cluster(['127.0.0.1']).connect('your_keyspace')  # Replace with your cluster details
-    
     query_text = payload.query_text
-    try:
-        # Ensure that the query text corresponds to the `llm_response` column
-        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query_text])
+    session = Cluster(['127.0.0.1']).connect('your_keyspace')  # Replace with your Cassandra cluster details
 
-        # Return success message
-        return {"message": f"Bookmark with query '{query_text}' deleted successfully"}
+    try:
+        # Execute the DELETE query on Cassandra
+        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query_text])
+        
+        # Prepare response with appropriate headers
+        response_data = {"message": f"Bookmark with query '{query_text}' deleted successfully"}
+        
+        # Return response with custom headers
+        return JSONResponse(
+            content=response_data,
+            headers={
+                "x-content-type-options": "nosniff",  # Prevent MIME sniffing
+                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"  # Disable caching
+            }
+        )
     except Exception as e:
-        # Log the error and return message
-        return {"message": f"Failed to delete bookmark: {str(e)}"}
+        # Return response with appropriate headers even in case of an error
+        response_data = {"message": f"Failed to delete bookmark: {str(e)}"}
+        return JSONResponse(
+            content=response_data,
+            headers={
+                "x-content-type-options": "nosniff",  # Prevent MIME sniffing
+                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"  # Disable caching
+            }
+        )
 
 if __name__ == "main":
     import uvicorn
