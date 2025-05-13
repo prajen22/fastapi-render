@@ -636,21 +636,24 @@ async def get_user_count():
 async def get_user_count():
     global current_user
     try:
-        # Query to count the rows in the contact_us table
-        user_log_query = f"SELECT COUNT(*) FROM raj_log"
+        # Query to count the rows in the user log table
+        user_log_query = f"SELECT COUNT(*) FROM {current_user}_log"
         user_log_result = session.execute(user_log_query)
         user_log_count = user_log_result.one()[0]
 
-        # Count from contact_us table (assuming fixed name)
-        contact_query = "SELECT COUNT(*) FROM ragu_log"
+        # Count from the contact_us table (assuming fixed name)
+        contact_query = "SELECT COUNT(*) FROM contact_us"
         contact_result = session.execute(contact_query)
         contact_count = contact_result.one()[0]
+
+        # Sum the counts from both tables
         total_count = user_log_count + contact_count
 
-        return {"total_count": count}
+        return {"total_count": total_count}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching counts: {str(e)}")
+
 
 
 class QueryText(BaseModel):
