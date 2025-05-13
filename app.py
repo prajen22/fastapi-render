@@ -628,28 +628,22 @@ async def get_user_count():
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
 
 
-class DeleteRequest(BaseModel):
-    llm_response_text: str
+class DeleteTextRequest(BaseModel):
+    text: str
 
-@app.post("/delete_row/")
-async def delete_row_by_text(request: DeleteRequest):
-    llm_text = request.llm_response_text.strip()
+@app.post("/delete_row_by_query_text")
+def delete_row_by_text(request: DeleteTextRequest):
+    text = request.text.lower()
+    rows = session.execute("SELECT dummy_id, queries FROM your_table_name")
 
-    # Step 1: Find the UUID using the llm_response field
-    select_query = "SELECT dummy_id FROM raj_log WHERE llm_response = %s ALLOW FILTERING"
-    rows = session.execute(select_query, [llm_text])
-    row = next(iter(rows), None)
+    deleted_ids = []
 
-    if not row:
-        raise HTTPException(status_code=404, detail="Row not found for the given llm_response.")
+    for row in rows:
+        if row.queries and text in row.queries.lower():
+            session.execute("DELETE FROM your_table_name WHERE dummy_id=%s", (row.dummy_id,))
+            deleted_ids.append(str(row.dummy_id))
 
-    dummy_id = row.dummy_id
-
-    # Step 2: Delete the row using the primary key
-    delete_query = "DELETE FROM raj_log WHERE dummy_id = %s"
-    session.execute(delete_query, [dummy_id])
-
-    return {"status": "success", "deleted_id": str(dummy_id)}
+    return {"deleted_ids": deleted_ids, "message": f"Deleted rows containing '{text}' in queries."}
 
 
 if __name__ == "main":
