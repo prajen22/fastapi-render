@@ -633,7 +633,7 @@ async def get_user_count():
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
 
 @app.get("/get_query_count")
-async def get_user_count():
+async def get_query_count():
     global current_user
     try:
 
