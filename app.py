@@ -32,6 +32,7 @@ from typing import List
 
 
 
+
 # Replace with hardcoded values if the module is unavailable
 astra_client_id = "sNmpeUqPgFtgxXQnmjczDsaI"  # Replace with your actual client ID
 astra_client_secret = "+PlIZTTxCJA8DWfd39I7Y1vNsDMxTbRkWKkSvIrtA-H8U9rmldAnflhc,Ok6poD,E3Oy72yD6.UfZwxbr4QOmQMqli4jqbsjiL6JZIE31kztIYTbnhZjyCgPwoZdUfnN"  # Replace with your actual client secret
@@ -39,6 +40,7 @@ astra_database_id = "tecgium"  # Replace with your actual database ID
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://0a56ba4d59e5434ba03a49f61f6adca1.us-central1.gcp.cloud.es.io:443"
+abcdef=10
 
 
 
