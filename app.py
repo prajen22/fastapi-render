@@ -635,10 +635,10 @@ async def get_user_count():
 @app.get("/get_query_count")
 async def get_query_count():
     try:
-        # Dummy logic or real DB logic
         return {"total_count": 42}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 
