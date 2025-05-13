@@ -636,11 +636,26 @@ async def get_user_count():
 async def get_user_count():
     global current_user
     try:
-        # Query to count the rows in the contact_us table
-        count_query = "SELECT COUNT(*) FROM user_details"
-        result = session.execute(count_query)
-        count = result.one()[0]  # Extract the count from the result
-        return {"count": count}
+
+
+        user_log_query = f"SELECT COUNT(*) FROM ragu_log"
+        user_log_result = session.execute(user_log_query)
+        user_log_count = user_log_result.one()[0]
+
+        # Count from the contact_us table (assuming fixed name)
+        contact_query = "SELECT COUNT(*) FROM raj_log"
+        contact_result = session.execute(contact_query)
+        contact_count = contact_result.one()[0]
+
+        # Sum the counts from both tables
+        total_count = user_log_count + contact_count
+
+        
+        # # Query to count the rows in the contact_us table
+        # count_query = "SELECT COUNT(*) FROM user_details"
+        # result = session.execute(count_query)
+        # count = result.one()[0]  # Extract the count from the result
+        return {"count": total_count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
 
