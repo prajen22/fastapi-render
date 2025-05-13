@@ -635,9 +635,7 @@ class DeleteRequest(BaseModel):
 async def delete_row_by_text(request: DeleteRequest):
     llm_text = request.llm_response_text.strip()
 
-    
-    
-    # First, find the UUID using the text (assuming exact match)
+    # Step 1: Find the UUID using the llm_response field
     select_query = "SELECT dummy_id FROM raj_log WHERE llm_response = %s ALLOW FILTERING"
     rows = session.execute(select_query, [llm_text])
     row = next(iter(rows), None)
@@ -647,7 +645,7 @@ async def delete_row_by_text(request: DeleteRequest):
 
     dummy_id = row.dummy_id
 
-    # Now delete using the primary key
+    # Step 2: Delete the row using the primary key
     delete_query = "DELETE FROM raj_log WHERE dummy_id = %s"
     session.execute(delete_query, [dummy_id])
 
