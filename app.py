@@ -17,6 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from datetime import datetime
 from uuid import uuid4
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from typing import List
 from fastapi import HTTPException
 from cassandra.query import SimpleStatement
