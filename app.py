@@ -640,10 +640,19 @@ async def delete_bookmark_by_text(payload: QueryText, request: Request):
         query_text = payload.query_text
         print("Query text:", query_text)  # Log to verify input
 
+        table_name = f"{current_user}_log"
+
+
+
+        # Then run the query safely
+        query = f"DELETE FROM {table_name} WHERE llm_response = %s"
+        session.execute(query, (query_text,))
+
+
           # Replace with your keyspace
 
         # Delete
-        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query_text])
+        
 
         return JSONResponse(
             content={"message": f"Bookmark with query '{query_text}' deleted successfully"},
