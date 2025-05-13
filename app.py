@@ -633,15 +633,19 @@ class QueryText(BaseModel):
 
 @app.post("/delete_bookmark_by_text")
 def delete_bookmark_by_text(payload: QueryText):
-
-    query = payload.query_text
-
+    # Connect to Cassandra
+    session = Cluster(['127.0.0.1']).connect('your_keyspace')  # Replace with your cluster details
+    
+    query_text = payload.query_text
     try:
-        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query])
-        return {"message": f"Bookmark with query '{query}' deleted successfully"}
-    except Exception as e:
-        return {"message": f"Failed to delete bookmark: {str(e)}"}
+        # Ensure that the query text corresponds to the `llm_response` column
+        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query_text])
 
+        # Return success message
+        return {"message": f"Bookmark with query '{query_text}' deleted successfully"}
+    except Exception as e:
+        # Log the error and return message
+        return {"message": f"Failed to delete bookmark: {str(e)}"}
 
 if __name__ == "main":
     import uvicorn
