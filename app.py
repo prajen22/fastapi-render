@@ -628,6 +628,32 @@ async def get_user_count():
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
 
 
+class DeleteRequest(BaseModel):
+    llm_response_text: str
+
+@app.delete("/delete_row/")
+async def delete_row_by_text(request: DeleteRequest):
+    llm_text = request.llm_response_text.strip()
+
+    
+    
+    # First, find the UUID using the text (assuming exact match)
+    select_query = "SELECT dummy_id FROM raj_log WHERE llm_response = %s ALLOW FILTERING"
+    rows = session.execute(select_query, [llm_text])
+    row = next(iter(rows), None)
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Row not found for the given llm_response.")
+
+    dummy_id = row.dummy_id
+
+    # Now delete using the primary key
+    delete_query = "DELETE FROM raj_log WHERE dummy_id = %s"
+    session.execute(delete_query, [dummy_id])
+
+    return {"status": "success", "deleted_id": str(dummy_id)}
+
+
 if __name__ == "main":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
