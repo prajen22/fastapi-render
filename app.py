@@ -656,6 +656,7 @@ async def get_user_count():
 
 
 
+
 class QueryText(BaseModel):
     query_text: str
 
