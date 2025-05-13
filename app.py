@@ -616,6 +616,9 @@ async def get_ticket_count():
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
+
+
+
     
 
 @app.get("/get_user_count")
@@ -628,6 +631,26 @@ async def get_user_count():
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
+
+@app.get("/get_query_count")
+async def get_user_count():
+    global current_user
+    try:
+        # Query to count the rows in the contact_us table
+        user_log_query = f"SELECT COUNT(*) FROM raj_log"
+        user_log_result = session.execute(user_log_query)
+        user_log_count = user_log_result.one()[0]
+
+        # Count from contact_us table (assuming fixed name)
+        contact_query = "SELECT COUNT(*) FROM ragu_log"
+        contact_result = session.execute(contact_query)
+        contact_count = contact_result.one()[0]
+        total_count = user_log_count + contact_count
+
+        return {"total_count": count}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching counts: {str(e)}")
 
 
 class QueryText(BaseModel):
