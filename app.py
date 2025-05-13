@@ -634,20 +634,11 @@ async def get_user_count():
 
 @app.get("/get_query_count")
 async def get_query_count():
-    global current_user
     try:
-
-
-     
-
-        
-        # # Query to count the rows in the contact_us table
-        count_query = "SELECT COUNT(*) FROM user_details"
-        result = session.execute(count_query)
-        count = result.one()[0]  # Extract the count from the result
-        return {"count": count}
+        # Dummy logic or real DB logic
+        return {"total_count": 42}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
