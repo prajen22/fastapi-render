@@ -645,7 +645,7 @@ async def get_user_count():
         count_query = "SELECT COUNT(*) FROM user_details"
         result = session.execute(count_query)
         count = result.one()[0]  # Extract the count from the result
-        return {"count": total_count}
+        return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
 
