@@ -632,33 +632,45 @@ class QueryText(BaseModel):
     query_text: str
 
 @app.post("/delete_bookmark_by_text")
-def delete_bookmark_by_text(payload: QueryText):
-    query_text = payload.query_text
-    session = Cluster(['127.0.0.1']).connect('your_keyspace')  # Replace with your Cassandra cluster details
+async def delete_bookmark_by_text(payload: QueryText, request: Request):
+    global current_user
+
+    # 1. Check if the user is logged in
+    if not current_user:
+        raise HTTPException(status_code=403, detail="User not logged in")
 
     try:
-        # Execute the DELETE query on Cassandra
-        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query_text])
-        
-        # Prepare response with appropriate headers
-        response_data = {"message": f"Bookmark with query '{query_text}' deleted successfully"}
-        
-        # Return response with custom headers
+        # 2. Log the input for debug
+        body = await request.json()
+        print("Received body:", body)
+
+        query_text = payload.query_text
+        print("Query text:", query_text)
+
+        # 3. Sanitize table name
+        table_name = f"{current_user}_log"
+        if not table_name.replace("_", "").isalnum():
+            raise HTTPException(status_code=400, detail="Invalid table name")
+
+
+        # 5. Execute delete safely
+        session.execute(f"DELETE FROM {table_name} WHERE llm_response = %s", (query_text,))
+
         return JSONResponse(
-            content=response_data,
+            content={"message": f"Bookmark with query '{query_text}' deleted successfully"},
             headers={
-                "x-content-type-options": "nosniff",  # Prevent MIME sniffing
-                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"  # Disable caching
+                "x-content-type-options": "nosniff",
+                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
             }
         )
+
     except Exception as e:
-        # Return response with appropriate headers even in case of an error
-        response_data = {"message": f"Failed to delete bookmark: {str(e)}"}
+        print("Error:", str(e))
         return JSONResponse(
-            content=response_data,
+            content={"message": f"Failed to delete bookmark: {str(e)}"},
             headers={
-                "x-content-type-options": "nosniff",  # Prevent MIME sniffing
-                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"  # Disable caching
+                "x-content-type-options": "nosniff",
+                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
             }
         )
 
