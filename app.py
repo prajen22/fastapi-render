@@ -631,7 +631,7 @@ async def get_user_count():
 class DeleteRequest(BaseModel):
     llm_response_text: str
 
-@app.delete("/delete_row/")
+@app.post("/delete_row/")
 async def delete_row_by_text(request: DeleteRequest):
     llm_text = request.llm_response_text.strip()
 
