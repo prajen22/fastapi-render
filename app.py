@@ -628,22 +628,19 @@ async def get_user_count():
         raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
 
 
-class DeleteTextRequest(BaseModel):
-    text: str
+class QueryText(BaseModel):
+    query_text: str
 
-@app.post("/delete_row_by_query_text")
-def delete_row_by_text(request: DeleteTextRequest):
-    text = request.text.lower()
-    rows = session.execute("SELECT dummy_id, queries FROM your_table_name")
+@app.post("/delete_bookmark_by_text")
+def delete_bookmark_by_text(payload: QueryText):
 
-    deleted_ids = []
+    query = payload.query_text
 
-    for row in rows:
-        if row.queries and text in row.queries.lower():
-            session.execute("DELETE FROM your_table_name WHERE dummy_id=%s", (row.dummy_id,))
-            deleted_ids.append(str(row.dummy_id))
-
-    return {"deleted_ids": deleted_ids, "message": f"Deleted rows containing '{text}' in queries."}
+    try:
+        session.execute("DELETE FROM ragu_log WHERE llm_response = %s", [query])
+        return {"message": f"Bookmark with query '{query}' deleted successfully"}
+    except Exception as e:
+        return {"message": f"Failed to delete bookmark: {str(e)}"}
 
 
 if __name__ == "main":
