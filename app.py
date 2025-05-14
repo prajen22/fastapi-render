@@ -682,6 +682,48 @@ async def delete_bookmark_by_text(payload: QueryText, request: Request):
                 "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
             }
         )
+
+class ticketText(BaseModel):
+    ticket_text: str
+
+@app.post("/delete_ticket_by_text")
+async def delete_ticket_by_text(payload: ticketText, request: Request):
+    try:
+        print("Received body:", await request.json())  # Log to verify input
+        ticket_text = payload.ticket_text
+        print("Query text:", ticket_text)  # Log to verify input
+
+
+
+
+
+        # Then run the query safely
+        query = f"DELETE FROM contact_us WHERE first_name= %s"
+        session.execute(query, (ticket_text,))
+
+
+          # Replace with your keyspace
+
+        # Delete
+        
+
+        return JSONResponse(
+            content={"message": f"Bookmark with query '{query_text}' deleted successfully"},
+            headers={
+                "x-content-type-options": "nosniff",
+                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            content={"message": f"Failed to delete bookmark: {str(e)}"},
+            headers={
+                "x-content-type-options": "nosniff",
+                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
+            }
+        )
+
+
 if __name__ == "main":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
