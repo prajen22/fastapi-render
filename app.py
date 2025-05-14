@@ -683,40 +683,31 @@ async def delete_bookmark_by_text(payload: QueryText, request: Request):
             }
         )
 
-class ticketText(BaseModel):
+class TicketText(BaseModel):
     ticket_text: str
 
 @app.post("/delete_ticket_by_text")
-async def delete_ticket_by_text(payload: ticketText, request: Request):
+async def delete_ticket_by_text(payload: TicketText, request: Request):
     try:
-        print("Received body:", await request.json())  # Log to verify input
+        session = get_db_session()
+
         ticket_text = payload.ticket_text
-        print("Query text:", ticket_text)  # Log to verify input
+        print("Deleting ticket with first_name:", ticket_text)
 
-
-
-
-
-        # Then run the query safely
-        query = f"DELETE FROM contact_us WHERE first_name= %s"
+        query = "DELETE FROM contact_us WHERE first_name = %s"
         session.execute(query, (ticket_text,))
 
-
-          # Replace with your keyspace
-
-        # Delete
-        
-
         return JSONResponse(
-            content={"message": f"ticket with query '{ticket_text}' deleted successfully"},
+            content={"message": f"Ticket for '{ticket_text}' deleted successfully"},
             headers={
                 "x-content-type-options": "nosniff",
                 "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
             }
         )
+
     except Exception as e:
         return JSONResponse(
-            content={"message": f"Failed to delete bookmark: {str(e)}"},
+            content={"message": f"Failed to delete ticket: {str(e)}"},
             headers={
                 "x-content-type-options": "nosniff",
                 "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
