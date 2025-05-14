@@ -708,7 +708,7 @@ async def delete_ticket_by_text(payload: ticketText, request: Request):
         
 
         return JSONResponse(
-            content={"message": f"Bookmark with query '{query_text}' deleted successfully"},
+            content={"message": f"ticket with query '{ticket_text}' deleted successfully"},
             headers={
                 "x-content-type-options": "nosniff",
                 "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
