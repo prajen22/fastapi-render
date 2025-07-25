@@ -32,13 +32,24 @@ from datetime import datetime
 import uuid
 from typing import List
 
+from astrapy import DataAPIClient
 
 
 
-# Replace with hardcoded values if the module is unavailable
-astra_client_id = "sNmpeUqPgFtgxXQnmjczDsaI"  # Replace with your actual client ID
-astra_client_secret = "+PlIZTTxCJA8DWfd39I7Y1vNsDMxTbRkWKkSvIrtA-H8U9rmldAnflhc,Ok6poD,E3Oy72yD6.UfZwxbr4QOmQMqli4jqbsjiL6JZIE31kztIYTbnhZjyCgPwoZdUfnN"  # Replace with your actual client secret
-astra_database_id = "tecgium"  # Replace with your actual database ID
+from astrapy import DataAPIClient
+
+# Replace with your real credentials
+
+
+
+
+
+
+
+# # Replace with hardcoded values if the module is unavailable
+# astra_client_id = "sNmpeUqPgFtgxXQnmjczDsaI"  # Replace with your actual client ID
+# astra_client_secret = "+PlIZTTxCJA8DWfd39I7Y1vNsDMxTbRkWKkSvIrtA-H8U9rmldAnflhc,Ok6poD,E3Oy72yD6.UfZwxbr4QOmQMqli4jqbsjiL6JZIE31kztIYTbnhZjyCgPwoZdUfnN"  # Replace with your actual client secret
+# astra_database_id = "tecgium"  # Replace with your actual database ID
 
 # ✅ Elasticsearch Configuration
 ELASTICSEARCH_URL = "https://0a56ba4d59e5434ba03a49f61f6adca1.us-central1.gcp.cloud.es.io:443"
@@ -96,17 +107,13 @@ if not es.indices.exists(index=INDEX_NAME):
     )
 
 
-def connect_to_cassandra():
-    cloud_config = {
-        'secure_connect_bundle': 'secure-connect-tecgium.zip'  # Path to your secure connect bundle
-    }
-    cluster = Cluster(cloud=cloud_config, auth_provider=PlainTextAuthProvider(astra_client_id, astra_client_secret))
-    session = cluster.connect()
-    session.set_keyspace("tech")
-    return session
+def connect_to_astra():
+    client = DataAPIClient(ASTRA_DB_APP_TOKEN)
+    db = client.get_database_by_api_endpoint(ASTRA_DB_ENDPOINT)
+    return db
 
-# Cassandra session
-session = connect_to_cassandra()
+# Get the DB instance
+db = connect_to_astra()
 
 # --- Pydantic model ---
 class LLMResponse(BaseModel):
@@ -438,121 +445,90 @@ class LLMResponse(BaseModel):
     llm_response: str
     query: str
 
+# ✅ Replace with your real token from the Astra Portal (Database Admin token)
+ASTRA_DB_APP_TOKEN = "AstraCS:fDcDGXWMOdhQCMyRBpCIeKaT:50f9a09b31b6247a3908a5b687f3940b237e2070c1dac3e6a3673565b282d2c0"
 
-# === USER LOGIN ===
+# ✅ Your database REST endpoint (from Astra DB dashboard)
+ASTRA_DB_ENDPOINT = "https://81caab47-b30a-43df-987c-098df016635f-us-east-2.apps.astra.datastax.com"
+
+# Connect to Astra DB
+client = DataAPIClient(ASTRA_DB_APP_TOKEN)
+db = client.get_database_by_api_endpoint(ASTRA_DB_ENDPOINT)
+users_collection = db.collection("user_details")
+contact_collection = db.collection("contact_us")
+
+current_user = None
+current_login_time = None
+all_responses = []
+
+class LoginData(BaseModel):
+    login_id: str
+    password: str
+
 @app.post("/user_login")
 async def user_login(data: LoginData):
     global current_user, current_login_time
     try:
-        check_user = session.execute(
-            "SELECT password FROM user_details WHERE username=%s",
-            (data.login_id,)
-        ).one()
-
-        if check_user and check_user.password == data.password:
+        result = users_collection.find_one({"username": data.login_id})
+        if result and result.get("password") == data.password:
             current_user = data.login_id
             current_login_time = datetime.utcnow()
-
-            return {
-                "success": True
-            }
-
+            return {"success": True}
         return {"success": False, "error": "Invalid credentials"}
-
     except Exception as e:
-        print("Login error:", e)
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
 
 class LLMResponse(BaseModel):
     llm_response: str
     query: str
 
-# Endpoint to receive LLM response and store in Cassandra
 @app.post("/receive_llm_response")
 async def receive_llm_response(data: LLMResponse):
     global current_user
-
-    # Ensure user is logged in (current_user should not be None or empty)
     if not current_user:
         raise HTTPException(status_code=403, detail="User not logged in")
-
     try:
-        # Store the response in the all_responses list for temporary storage
         all_responses.append(data.llm_response)
-
-        # Generate UUID for dummy_id
-        dummy_id = uuid4()
-
-        # Ensure current_user's table exists (check for existence)
-        # Replace the table name dynamically with current_user's table
-        table_name = f"{current_user}_log"
-
-        # Ensure the query structure matches the table schema
-        query = f"""
-        INSERT INTO {table_name} (dummy_id, llm_response, queries)
-        VALUES (%s, %s, %s)
-        """
-        
-        # Execute the query with the required values
-        session.execute(query, (dummy_id, data.llm_response, data.query))
-
+        table = db.collection(f"{current_user}_log")
+        table.insert_one({
+            "_id": str(uuid4()),
+            "llm_response": data.llm_response,
+            "queries": data.query
+        })
         return {"message": "LLM response and query recorded."}
-
-    except Exception as e:
-        print("LLM log error:", e)
-        raise HTTPException(status_code=500, detail="Failed to insert LLM response")
-
-
-
-
-class LLMesponse(BaseModel):
-    llm_response: str  # Only llm_response field
-
-
-@app.post("/get_user_bookmarks", response_model=List[LLMesponse])
-def get_user_bookmarks():
-    global current_user
-
-    # Check if the user is logged in
-    if not current_user:
-        raise HTTPException(status_code=403, detail="User not logged in")
-    
-    # Execute query to fetch llm_response data
-    try:
-        rows = session.execute(f"SELECT llm_response FROM {current_user}_log;")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Prepare the result
-    result = [{"llm_response": row.llm_response} for row in rows]
+class LLMesponse(BaseModel):
+    llm_response: str
 
-    # Return the result
-    return result
+@app.get("/get_user_bookmarks", response_model=List[LLMesponse])
+def get_user_bookmarks():
+    global current_user
+    if not current_user:
+        raise HTTPException(status_code=403, detail="User not logged in")
+    try:
+        table = db.collection(f"{current_user}_log")
+        results = table.find({})
+        return [{"llm_response": r["llm_response"]} for r in results]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 class querysponse(BaseModel):
     queries: str
 
-@app.post("/get_user_queries", response_model=List[querysponse])
+@app.get("/get_user_queries", response_model=List[querysponse])
 def get_user_queries():
     global current_user
-
-    # Check if the user is logged in
     if not current_user:
         raise HTTPException(status_code=403, detail="User not logged in")
-    
-    # Execute query to fetch only queries (without llm_response)
     try:
-        rows = session.execute(f"SELECT queries FROM {current_user}_log;")
+        table = db.collection(f"{current_user}_log")
+        results = table.find({})
+        return [{"queries": r["queries"]} for r in results]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Prepare the result
-    result = [{"queries": row.queries} for row in rows]
-
-    # Return the result
-    return result
 class ContactUsData(BaseModel):
     first_name: str
     last_name: str
@@ -562,20 +538,15 @@ class ContactUsData(BaseModel):
 @app.post("/submit_contact")
 async def submit_contact(data: ContactUsData):
     try:
-        insert_query = SimpleStatement("""
-            INSERT INTO contact_us (id, first_name, last_name, email, message)
-            VALUES (%s, %s, %s, %s, %s)
-        """)
-        session.execute(insert_query, (
-            uuid.uuid4(),
-            data.first_name,
-            data.last_name,
-            data.email,
-            data.message
-        ))
+        contact_collection.insert_one({
+            "_id": str(uuid4()),
+            "first_name": data.first_name,
+            "last_name": data.last_name,
+            "email": data.email,
+            "message": data.message
+        })
         return {"message": "Contact form submitted successfully"}
     except Exception as e:
-        print("🔥 Contact submission error:", str(e))  # ADD THIS LINE
         raise HTTPException(status_code=500, detail=str(e))
 
 class ContactUsResponse(BaseModel):
@@ -588,60 +559,39 @@ class ContactUsResponse(BaseModel):
 @app.get("/get_contact_messages", response_model=List[ContactUsResponse])
 async def get_contact_messages():
     try:
-        query = "SELECT id, first_name, last_name, email, message FROM contact_us"
-        rows = session.execute(query)
-
-        messages = []
-        for row in rows:
-            messages.append({
-                "id": str(row.id),
-                "first_name": row.first_name,
-                "last_name": row.last_name,
-                "email": row.email,
-                "message": row.message
-            })
-
-        return messages
-
+        results = contact_collection.find({})
+        return [{
+            "id": r["_id"],
+            "first_name": r["first_name"],
+            "last_name": r["last_name"],
+            "email": r["email"],
+            "message": r["message"]
+        } for r in results]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching contact messages: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get_ticket_count")
 async def get_ticket_count():
     try:
-        # Query to count the rows in the contact_us table
-        count_query = "SELECT COUNT(*) FROM contact_us"
-        result = session.execute(count_query)
-        count = result.one()[0]  # Extract the count from the result
+        count = contact_collection.count_documents({})
         return {"count": count}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
-
-
-
-    
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get_user_count")
 async def get_user_count():
     try:
-        # Query to count the rows in the contact_us table
-        count_query = "SELECT COUNT(*) FROM user_details"
-        result = session.execute(count_query)
-        count = result.one()[0]  # Extract the count from the result
+        count = users_collection.count_documents({})
         return {"count": count}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching ticket count: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get_query_count")
 async def get_query_count():
     try:
-        return {"total_count": 42}
+        return {"total_count": len(all_responses)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
 
 class QueryText(BaseModel):
     query_text: str
@@ -649,39 +599,11 @@ class QueryText(BaseModel):
 @app.post("/delete_bookmark_by_text")
 async def delete_bookmark_by_text(payload: QueryText, request: Request):
     try:
-        print("Received body:", await request.json())  # Log to verify input
-        query_text = payload.query_text
-        print("Query text:", query_text)  # Log to verify input
-
-        table_name = f"{current_user}_log"
-
-
-
-        # Then run the query safely
-        query = f"DELETE FROM {table_name} WHERE llm_response = %s"
-        session.execute(query, (query_text,))
-
-
-          # Replace with your keyspace
-
-        # Delete
-        
-
-        return JSONResponse(
-            content={"message": f"Bookmark with query '{query_text}' deleted successfully"},
-            headers={
-                "x-content-type-options": "nosniff",
-                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
-            }
-        )
+        table = db.collection(f"{current_user}_log")
+        table.delete_many({"llm_response": payload.query_text})
+        return {"message": "Bookmark deleted successfully"}
     except Exception as e:
-        return JSONResponse(
-            content={"message": f"Failed to delete bookmark: {str(e)}"},
-            headers={
-                "x-content-type-options": "nosniff",
-                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
-            }
-        )
+        return {"message": f"Failed to delete bookmark: {str(e)}"}
 
 class TicketText(BaseModel):
     ticket_text: str
@@ -689,31 +611,10 @@ class TicketText(BaseModel):
 @app.post("/delete_ticket_by_text")
 async def delete_ticket_by_text(payload: TicketText, request: Request):
     try:
-        session = get_db_session()
-
-        ticket_text = payload.ticket_text
-        print("Deleting ticket with first_name:", ticket_text)
-
-        query = "DELETE FROM contact_us WHERE first_name = %s"
-        session.execute(query, (ticket_text,))
-
-        return JSONResponse(
-            content={"message": f"Ticket for '{ticket_text}' deleted successfully"},
-            headers={
-                "x-content-type-options": "nosniff",
-                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
-            }
-        )
-
+        contact_collection.delete_many({"first_name": payload.ticket_text})
+        return {"message": "Ticket deleted successfully"}
     except Exception as e:
-        return JSONResponse(
-            content={"message": f"Failed to delete ticket: {str(e)}"},
-            headers={
-                "x-content-type-options": "nosniff",
-                "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
-            }
-        )
-
+        return {"message": f"Failed to delete ticket: {str(e)}"}
 
 if __name__ == "main":
     import uvicorn
