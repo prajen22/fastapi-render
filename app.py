@@ -463,6 +463,10 @@ db = client.get_database_by_api_endpoint(ASTRA_DB_ENDPOINT)
 users_collection = db.collection("user_details")
 contact_collection = db.collection("contact_us")
 
+users_collection = db["user_details"]
+contact_collection = db["contact_us"]
+
+
 current_user = None
 current_login_time = None
 all_responses = []
