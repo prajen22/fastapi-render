@@ -8,4 +8,5 @@ groq
 pydantic
 requests
 cassandra-driver
-astrapy
+datastax-astra
+
