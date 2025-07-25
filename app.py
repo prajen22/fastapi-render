@@ -52,12 +52,12 @@ from astrapy import DataAPIClient
 # astra_database_id = "tecgium"  # Replace with your actual database ID
 
 # ✅ Elasticsearch Configuration
-ELASTICSEARCH_URL = "https://0a56ba4d59e5434ba03a49f61f6adca1.us-central1.gcp.cloud.es.io:443"
+ELASTICSEARCH_URL = "https://tech-e238e4.es.us-central1.gcp.elastic.cloud:443"
 abcdef=10
 
 
 
-API_KEY = "SmJ6T3JaWUJyTWFhb1duQTNWSGs6VzVsbjEtdjVxTzlyWUhOSGo3N1ZLUQ=="
+API_KEY = "cXVLWVFaZ0JOYmk0TnFWazhBZnE6c2NXVEZCRTlUYXpMSE5ROFhvdXpIZw=="
 
 # YVMzaGJwVUJsbWVLelFDNXhOTDM6bjZFVXRiRk1Eb0NJSGZiZkVabWRWUQ==
 # https://my-elasticsearch-project-d4e765.es.us-east-1.aws.elastic.cloud:443
@@ -67,7 +67,7 @@ es = Elasticsearch(
     api_key=API_KEY
 )
 # ✅ Groq API Configuration
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 # ✅ FastAPI App Initialization
 app = FastAPI()
