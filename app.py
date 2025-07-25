@@ -106,6 +106,12 @@ if not es.indices.exists(index=INDEX_NAME):
         }
     )
 
+# ✅ Replace with your real token from the Astra Portal (Database Admin token)
+ASTRA_DB_APP_TOKEN = "AstraCS:fDcDGXWMOdhQCMyRBpCIeKaT:50f9a09b31b6247a3908a5b687f3940b237e2070c1dac3e6a3673565b282d2c0"
+
+# ✅ Your database REST endpoint (from Astra DB dashboard)
+ASTRA_DB_ENDPOINT = "https://81caab47-b30a-43df-987c-098df016635f-us-east-2.apps.astra.datastax.com"
+
 
 def connect_to_astra():
     client = DataAPIClient(ASTRA_DB_APP_TOKEN)
